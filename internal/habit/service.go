@@ -1,61 +1,49 @@
 package habit
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 var ErrNotFound = errors.New("habit not found")
 var ErrValidation = errors.New("name is required")
 
-// store is the in-memory backing storage. This will be replaced by a
-// real repository (backed by Postgres) in the next milestone — nothing
-// outside this file will need to change when that happens.
-var store = []Habit{}
-var nextID = 1
+// placeholderUserID is a temporary hardcoded value used until authentication
+// (Phase 5) exists and we can derive the real user from the request.
+// TODO(auth): replace this with the authenticated user's ID.
+const placeholderUserID = 1
 
-func List() []Habit {
-	return store
+type Service struct {
+	repo *Repository
 }
 
-func Create(input Habit) (Habit, error) {
+func NewService(repo *Repository) *Service {
+	return &Service{repo: repo}
+}
+
+func (s *Service) List(ctx context.Context) ([]Habit, error) {
+	return s.repo.GetAll(ctx)
+}
+
+func (s *Service) Create(ctx context.Context, input Habit) (Habit, error) {
 	if input.Name == "" {
 		return Habit{}, ErrValidation
 	}
-
-	input.ID = nextID
-	nextID++
-	store = append(store, input)
-	return input, nil
+	input.UserID = placeholderUserID
+	return s.repo.Create(ctx, input)
 }
 
-func Get(id int) (Habit, error) {
-	for _, h := range store {
-		if h.ID == id {
-			return h, nil
-		}
-	}
-	return Habit{}, ErrNotFound
+func (s *Service) Get(ctx context.Context, id int) (Habit, error) {
+	return s.repo.Get(ctx, id)
 }
 
-func Update(id int, input Habit) (Habit, error) {
+func (s *Service) Update(ctx context.Context, id int, input Habit) (Habit, error) {
 	if input.Name == "" {
 		return Habit{}, ErrValidation
 	}
-
-	for i, h := range store {
-		if h.ID == id {
-			input.ID = id
-			store[i] = input
-			return input, nil
-		}
-	}
-	return Habit{}, ErrNotFound
+	return s.repo.Update(ctx, id, input)
 }
 
-func Delete(id int) error {
-	for i, h := range store {
-		if h.ID == id {
-			store = append(store[:i], store[i+1:]...)
-			return nil
-		}
-	}
-	return ErrNotFound
+func (s *Service) Delete(ctx context.Context, id int) error {
+	return s.repo.Delete(ctx, id)
 }
