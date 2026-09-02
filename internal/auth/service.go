@@ -65,3 +65,11 @@ func generateToken() (string, error) {
 	}
 	return hex.EncodeToString(bytes), nil
 }
+
+func (s *Service) ValidateSession(ctx context.Context, token string) (int, error) {
+	session, err := s.repo.GetSession(ctx, token)
+	if err != nil {
+		return 0, err
+	}
+	return session.UserID, nil
+}

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/benokwulu-lgtm/triax-habit-tracker/internal/auth"
 )
 
 type Handler struct {
@@ -19,9 +21,16 @@ func (h *Handler) ListCreate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	ctx := r.Context()
 
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "authentication required"})
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		habits, err := h.service.List(ctx)
+		habits, err := h.service.List(ctx, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": "failed to fetch habits"})
@@ -36,7 +45,7 @@ func (h *Handler) ListCreate(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body"})
 			return
 		}
-		created, err := h.service.Create(ctx, input)
+		created, err := h.service.Create(ctx, userID, input)
 		if err != nil {
 			status := http.StatusInternalServerError
 			if err == ErrValidation {
@@ -59,6 +68,13 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	ctx := r.Context()
 
+	userID, ok := auth.UserIDFromContext(ctx)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "authentication required"})
+		return
+	}
+
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/habits/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -69,7 +85,7 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		result, err := h.service.Get(ctx, id)
+		result, err := h.service.Get(ctx, userID, id)
 		if err != nil {
 			status := http.StatusInternalServerError
 			if err == ErrNotFound {
@@ -88,7 +104,7 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body"})
 			return
 		}
-		updated, err := h.service.Update(ctx, id, input)
+		updated, err := h.service.Update(ctx, userID, id, input)
 		if err != nil {
 			status := http.StatusInternalServerError
 			switch err {
@@ -104,7 +120,7 @@ func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(updated)
 
 	case http.MethodDelete:
-		if err := h.service.Delete(ctx, id); err != nil {
+		if err := h.service.Delete(ctx, userID, id); err != nil {
 			status := http.StatusInternalServerError
 			if err == ErrNotFound {
 				status = http.StatusNotFound

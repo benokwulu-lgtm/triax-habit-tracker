@@ -54,18 +54,19 @@ func main() {
 	}
 	fmt.Println("Connected to PostgreSQL successfully")
 
-	repo := habit.NewRepository(db)
-	service := habit.NewService(repo)
-	handler := habit.NewHandler(service)
 	authRepo := auth.NewRepository(db)
 	authService := auth.NewService(authRepo)
 	authHandler := auth.NewHandler(authService)
 
+	repo := habit.NewRepository(db)
+	service := habit.NewService(repo)
+	handler := habit.NewHandler(service)
+
 	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/api/habits", handler.ListCreate)
-	http.HandleFunc("/api/habits/", handler.Detail)
 	http.HandleFunc("/api/register", authHandler.Register)
 	http.HandleFunc("/api/login", authHandler.Login)
+	http.HandleFunc("/api/habits", authHandler.RequireAuth(handler.ListCreate))
+	http.HandleFunc("/api/habits/", authHandler.RequireAuth(handler.Detail))
 
 	fmt.Println("Starting server on :8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
