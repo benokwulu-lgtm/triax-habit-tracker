@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/benokwulu-lgtm/triax-habit-tracker/internal/auth"
 	"github.com/benokwulu-lgtm/triax-habit-tracker/internal/habit"
 	_ "github.com/lib/pq"
 )
@@ -56,10 +57,15 @@ func main() {
 	repo := habit.NewRepository(db)
 	service := habit.NewService(repo)
 	handler := habit.NewHandler(service)
+	authRepo := auth.NewRepository(db)
+	authService := auth.NewService(authRepo)
+	authHandler := auth.NewHandler(authService)
 
 	http.HandleFunc("/health", healthHandler)
 	http.HandleFunc("/api/habits", handler.ListCreate)
 	http.HandleFunc("/api/habits/", handler.Detail)
+	http.HandleFunc("/api/register", authHandler.Register)
+	http.HandleFunc("/api/login", authHandler.Login)
 
 	fmt.Println("Starting server on :8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
