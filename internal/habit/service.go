@@ -22,7 +22,7 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) List(ctx context.Context) ([]Habit, error) {
-	return s.repo.GetAll(ctx)
+	return s.repo.GetAll(ctx, placeholderUserID)
 }
 
 func (s *Service) Create(ctx context.Context, input Habit) (Habit, error) {
@@ -34,16 +34,16 @@ func (s *Service) Create(ctx context.Context, input Habit) (Habit, error) {
 }
 
 func (s *Service) Get(ctx context.Context, id int) (Habit, error) {
-	return s.repo.Get(ctx, id)
+	return s.repo.Get(ctx, id, placeholderUserID)
 }
 
 func (s *Service) Update(ctx context.Context, id int, input Habit) (Habit, error) {
 	if input.Name == "" {
 		return Habit{}, ErrValidation
 	}
-	return s.repo.Update(ctx, id, input)
+	return s.repo.Update(ctx, id, placeholderUserID, input)
 }
 
 func (s *Service) Delete(ctx context.Context, id int) error {
-	return s.repo.Delete(ctx, id)
+	return s.repo.Delete(ctx, id, placeholderUserID)
 }

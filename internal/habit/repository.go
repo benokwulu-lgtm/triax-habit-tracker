@@ -13,12 +13,13 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) GetAll(ctx context.Context) ([]Habit, error) {
+func (r *Repository) GetAll(ctx context.Context, userID int) ([]Habit, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, name, description, frequency, is_active
 		FROM habits
+		WHERE user_id = $1
 		ORDER BY id
-	`)
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,14 +54,14 @@ func (r *Repository) Create(ctx context.Context, h Habit) (Habit, error) {
 	return h, nil
 }
 
-func (r *Repository) Get(ctx context.Context, id int) (Habit, error) {
+func (r *Repository) Get(ctx context.Context, id int, userID int) (Habit, error) {
 	var h Habit
 	var description sql.NullString
 	query := `
 		SELECT id, user_id, name, description, frequency, is_active
-		FROM habits WHERE id = $1
+		FROM habits WHERE id = $1 AND user_id = $2
 	`
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive)
+	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive)
 	if err == sql.ErrNoRows {
 		return Habit{}, ErrNotFound
 	}
@@ -71,13 +72,13 @@ func (r *Repository) Get(ctx context.Context, id int) (Habit, error) {
 	return h, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id int, h Habit) (Habit, error) {
+func (r *Repository) Update(ctx context.Context, id int, userID int, h Habit) (Habit, error) {
 	query := `
 		UPDATE habits
 		SET name = $1, description = $2, frequency = $3, is_active = $4
-		WHERE id = $5
+		WHERE id = $5 AND user_id = $6
 	`
-	result, err := r.db.ExecContext(ctx, query, h.Name, h.Description, h.Frequency, h.IsActive, id)
+	result, err := r.db.ExecContext(ctx, query, h.Name, h.Description, h.Frequency, h.IsActive, id, userID)
 	if err != nil {
 		return Habit{}, err
 	}
@@ -92,8 +93,8 @@ func (r *Repository) Update(ctx context.Context, id int, h Habit) (Habit, error)
 	return h, nil
 }
 
-func (r *Repository) Delete(ctx context.Context, id int) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM habits WHERE id = $1`, id)
+func (r *Repository) Delete(ctx context.Context, id int, userID int) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM habits WHERE id = $1 AND user_id = $2`, id, userID)
 	if err != nil {
 		return err
 	}
