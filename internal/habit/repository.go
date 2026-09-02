@@ -15,10 +15,10 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) GetAll(ctx context.Context, userID int) ([]Habit, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, name, description, frequency, is_active
+		SELECT id, user_id, name, description, frequency, is_active, created_at
 		FROM habits
 		WHERE user_id = $1
-		ORDER BY id
+		ORDER BY created_at DESC
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func (r *Repository) GetAll(ctx context.Context, userID int) ([]Habit, error) {
 	for rows.Next() {
 		var h Habit
 		var description sql.NullString
-		if err := rows.Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive); err != nil {
+		if err := rows.Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive, &h.CreatedAt); err != nil {
 			return nil, err
 		}
 		h.Description = description.String
@@ -45,9 +45,9 @@ func (r *Repository) Create(ctx context.Context, h Habit) (Habit, error) {
 	query := `
 		INSERT INTO habits (user_id, name, description, frequency, is_active)
 		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
+		RETURNING id, created_at
 	`
-	err := r.db.QueryRowContext(ctx, query, h.UserID, h.Name, h.Description, h.Frequency, h.IsActive).Scan(&h.ID)
+	err := r.db.QueryRowContext(ctx, query, h.UserID, h.Name, h.Description, h.Frequency, h.IsActive).Scan(&h.ID, &h.CreatedAt)
 	if err != nil {
 		return Habit{}, err
 	}
@@ -58,10 +58,10 @@ func (r *Repository) Get(ctx context.Context, id int, userID int) (Habit, error)
 	var h Habit
 	var description sql.NullString
 	query := `
-		SELECT id, user_id, name, description, frequency, is_active
+		SELECT id, user_id, name, description, frequency, is_active, created_at
 		FROM habits WHERE id = $1 AND user_id = $2
 	`
-	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive)
+	err := r.db.QueryRowContext(ctx, query, id, userID).Scan(&h.ID, &h.UserID, &h.Name, &description, &h.Frequency, &h.IsActive, &h.CreatedAt)
 	if err == sql.ErrNoRows {
 		return Habit{}, ErrNotFound
 	}
