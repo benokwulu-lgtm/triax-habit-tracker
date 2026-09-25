@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 type Handler struct {
@@ -100,4 +101,35 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	json.NewEncoder(w).Encode(map[string]string{"status": "logged in"})
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	cookie, err := r.Cookie("session_token")
+	if err == nil {
+		if err := h.service.Logout(r.Context(), cookie.Value); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "failed to log out"})
+			return
+		}
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Path:     "/",
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
 }
